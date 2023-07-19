@@ -232,3 +232,16 @@ class FlashAttention(nn.Module):
 
         out = rearrange(out, 'b h n d -> b n (h d)')
         return self.to_out(out)
+
+
+
+import torch.cuda.amp import autocast
+
+
+class OptimizedFlashAttention(FlashAttention):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs):
+        self.cache = {}
+
+    @autocast()
+    #def
