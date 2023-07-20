@@ -15,7 +15,7 @@ def test_memory_usage():
     print(f'Memory usage: {end_mem - start_mem} bytes')
 
 def test_speed():
-    attention = FlashAttention(dim=512, heads=8, dim_head=64).cuda()
+    attention = FlashAttention(dim=512, heads=8, dim_head=64, mixed_precision=True).cuda()
     x = torch.randn(1, 1000, 512).cuda()
     start_time = time.time()
     out = attention(x)
