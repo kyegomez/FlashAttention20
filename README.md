@@ -47,8 +47,8 @@ attention = FlashAttention(dim=512, heads=8, dim_head=64, parallel=True, mixed_p
 ```
 
 ## Tests
-
-Here are some tests to verify the correctness of the forward and backward passes:
+We have an extensive testing suite in `test.py` run that for more.
+Here are some tests to verify the correctness of the forward and backward passes, run `test.py`
 
 ```python
 import torch
