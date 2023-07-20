@@ -6,6 +6,10 @@ from torch.autograd.function import Function
 
 from einops import rearrange
 
+from torch.jit import fork, wait
+
+from torch.cuda.amp import autocast, GradScaler
+from torch.nn import DataParallel
 # constants
 
 EPSILON = 1e-10
@@ -183,6 +187,7 @@ class FlashAttentionFunction(Function):
 # it will be way slower than implementing it in CUDA
 # for tinkering and educational purposes
 
+
 class FlashAttention(nn.Module):
     def __init__(
         self,
@@ -192,11 +197,15 @@ class FlashAttention(nn.Module):
         dim_head = 64,
         causal = False,
         q_bucket_size = 512,
-        k_bucket_size = 1024
+        k_bucket_size = 1024,
+        parallel = False,
+        mixed_precision = False
     ):
         super().__init__()
         self.heads = heads
         self.causal = causal
+        self.parallel = parallel
+        self.mixed_precision = mixed_precision
 
         inner_dim = heads * dim_head
 
@@ -208,6 +217,11 @@ class FlashAttention(nn.Module):
         # can be overriden on forward
         self.q_bucket_size = q_bucket_size
         self.k_bucket_size = k_bucket_size
+
+        if self.parallel:
+            self.model = DataParallel(self)
+        if self.mixed_precision:
+            self.scaler = GradScaler()
 
     def forward(
         self,
@@ -224,24 +238,27 @@ class FlashAttention(nn.Module):
         context = default(context, x)
 
         q = self.to_q(x)
-        k, v = self.to_kv(context).chunk(2, dim = -1)
+        k, v = self.to_kv(context).chunk(2, dim=-1)
 
-        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = h), (q, k, v))
+        q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h=h), (q, k, v))
 
-        out = FlashAttentionFunction.apply(q, k, v, mask, self.causal, q_bucket_size, k_bucket_size)
+        if self.parallel:
+            # Split the input data into chunks and move each chunk to the correct GPU
+            num_gpus = torch.cuda.device_count()
+            x_chunks = x.split(x.size(0) // num_gpus)
+            x_chunks = [chunk.to(f'cuda:{i}') for i, chunk in enumerate(x_chunks)]
+            q = x_chunks
+
+        if self.mixed_precision:
+            # Use autocast to allow operations to run in lower precision
+            with autocast():
+                out = FlashAttentionFunction.apply(q, k, v, mask, self.causal, q_bucket_size, k_bucket_size)
+        else:
+            out = FlashAttentionFunction.apply(q, k, v, mask, self.causal, q_bucket_size, k_bucket_size)
 
         out = rearrange(out, 'b h n d -> b n (h d)')
         return self.to_out(out)
 
 
 
-import torch.cuda.amp import autocast
 
-
-class OptimizedFlashAttention(FlashAttention):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs):
-        self.cache = {}
-
-    @autocast()
-    #def
