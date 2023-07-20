@@ -7,7 +7,7 @@ FlashAttention is a PyTorch implementation of the Flash Attention mechanism, a m
 To install FlashAttention, you can clone this repository using git:
 
 ```bash
-git clone https://github.com/yourusername/flashattention.git
+git clone https://github.com/kyegomez/FlashAttention2.0.git
 cd flashattention
 ```
 
