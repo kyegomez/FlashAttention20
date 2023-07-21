@@ -8,7 +8,7 @@ To install FlashAttention, you can clone this repository using git:
 
 ```bash
 git clone https://github.com/kyegomez/FlashAttention2.0.git
-cd flashattention
+cd FlashAttention2.0
 ```
 
 Then, you can install the required packages using pip:
@@ -23,7 +23,7 @@ Here is a basic example of how to use the FlashAttention module:
 
 ```python
 import torch
-from flashattention import FlashAttention
+from attention import FlashAttention
 
 # Initialize a FlashAttention module
 attention = FlashAttention(dim=512, heads=8, dim_head=64)
